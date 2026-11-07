@@ -125,6 +125,19 @@ function CounsellorWorkspace() {
   }, []);
   const upcoming = sessions.filter(s => !!s.scheduled_at && !s.held_at && new Date(s.scheduled_at).getTime() >= Date.now()).length;
   const completed = sessions.filter(s => !!s.held_at).length;
+  async function updateSession(id:string, patch:{scheduled_at?:string;held_at?:string}) {
+    setError("");
+    const { error } = await supabase.from("counselling_sessions").update(patch).eq("id",id);
+    if (error) { setError(error.message); return; }
+    const { data, error: reloadError } = await supabase.from("counselling_sessions").select("id,learner_id,scheduled_at,held_at,created_at").order("scheduled_at",{ascending:true,nullsFirst:false});
+    if (reloadError) setError(reloadError.message);
+    setSessions(data || []);
+  }
+  function toLocalDateTime(value:string|null) {
+    if (!value) return "";
+    const d = new Date(value);
+    return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  }
   return <>
     <div className="welcome-row"><div><div className="eyebrow">NIALS ASSESSMENT SERVICES · COUNSELLOR WORKSPACE</div><h1>Counsellor overview</h1><p className="subheading">Your assigned counselling sessions, shown from your secure account.</p></div></div>
     <div className="stats-grid staff-stats">
@@ -135,7 +148,7 @@ function CounsellorWorkspace() {
     <div className="section-heading" id="workspace-content"><div><h2>My counselling sessions</h2><p>Only sessions assigned to your counsellor account are shown.</p></div><button className="outline-btn" onClick={() => window.location.reload()}>Refresh <ArrowRight size={15}/></button></div>
     <div className="table-card">
       {loading ? <p style={{padding:20}}>Loading your sessions…</p> : error ? <p role="alert" style={{padding:20,color:"#b42318"}}>Unable to load sessions: {error}</p> : sessions.length === 0 ? <div style={{padding:24}}><b>No sessions assigned yet</b><p style={{color:"#718096"}}>When NiALS assigns a learner session to your account, it will appear here.</p></div> :
-      <div className="table-scroll"><table><thead><tr><th>LEARNER RECORD</th><th>SCHEDULED</th><th>SESSION STATUS</th></tr></thead><tbody>{sessions.map(s=><tr key={s.id}><td>Linked learner record</td><td>{s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : "Not scheduled"}</td><td><span className={`status-pill ${s.held_at ? "completed" : s.scheduled_at ? "upcoming" : "in-progress"}`}>{s.held_at ? "Completed" : s.scheduled_at ? "Scheduled" : "Awaiting schedule"}</span></td></tr>)}</tbody></table></div>}
+      <div className="table-scroll"><table><thead><tr><th>LEARNER RECORD</th><th>SCHEDULE</th><th>SESSION STATUS</th><th>ACTION</th></tr></thead><tbody>{sessions.map(s=><tr key={s.id}><td>Linked learner record</td><td><input aria-label="Session date and time" type="datetime-local" defaultValue={toLocalDateTime(s.scheduled_at)} onBlur={e=>{const value=e.target.value;if(value)void updateSession(s.id,{scheduled_at:new Date(value).toISOString()});}} disabled={!!s.held_at}/></td><td><span className={`status-pill ${s.held_at ? "completed" : s.scheduled_at ? "upcoming" : "in-progress"}`}>{s.held_at ? "Completed" : s.scheduled_at ? "Scheduled" : "Awaiting schedule"}</span></td><td>{!s.held_at && <button className="small-primary" onClick={()=>void updateSession(s.id,{held_at:new Date().toISOString()})}>Mark session held</button>}</td></tr>)}</tbody></table></div>}
     </div>
     <section className="notice-card"><div className="notice-icon"><ShieldCheck size={20}/></div><div><b>Confidential learner information</b><p>Session access is restricted to the counsellor assigned to the record. School dashboards do not receive individual responses or private counselling notes.</p></div></section>
   </>;
