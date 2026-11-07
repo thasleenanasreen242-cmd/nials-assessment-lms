@@ -61,8 +61,8 @@ function StudentDashboard({ displayName, liveAssignmentCount, learnerLinked }: {
     <div className="stats-grid">
       <div className="stat-card"><div className="stat-icon stat-blue"><ClipboardCheck size={19}/></div><div className="stat-label">ASSESSMENTS</div><div className="stat-number">{String(liveAssignmentCount).padStart(2, "0")} <span>assigned</span></div><div className="stat-foot">{learnerLinked ? "Live assignments linked to your account" : "Waiting for school/NiALS account linking"}</div></div>
       <div className="stat-card"><div className="stat-icon stat-purple"><Activity size={19}/></div><div className="stat-label">MY PROGRESS</div><div className="stat-number">64<span>%</span></div><div className="progress-track"><div className="progress-fill" style={{width:"64%"}}/></div><div className="stat-foot">Keep going, you're doing well</div></div>
-      <div className="stat-card"><div className="stat-icon stat-green"><CalendarDays size={19}/></div><div className="stat-label">COUNSELLING</div><div className="stat-number">01 <span>session</span></div><div className="stat-foot">Your next session is to be scheduled</div></div>
-      <div className="stat-card"><div className="stat-icon stat-orange"><FileText size={19}/></div><div className="stat-label">MY REPORTS</div><div className="stat-number">00 <span>available</span></div><div className="stat-foot">Reports follow your counsellor session</div></div>
+      <div className="stat-card"><div className="stat-icon stat-green"><CalendarDays size={19}/></div><div className="stat-label">COUNSELLING</div><div className="stat-number">{liveSessionCount} <span>sessions</span></div><div className="stat-foot">From your counselling schedule</div></div>
+      <div className="stat-card"><div className="stat-icon stat-orange"><FileText size={19}/></div><div className="stat-label">MY REPORTS</div><div className="stat-number">{liveReportCount} <span>available</span></div><div className="stat-foot">Counsellor-released summaries</div></div>
     </div>
     <div className="section-heading assessment-heading" id="assessments"><div><h2>My assessments</h2><p>Pick up where you left off.</p></div><button className="outline-btn">View all <ArrowRight size={15}/></button></div>
     <div className="assessment-list">{assessments.map((a, i) => <div className="assessment-card" key={a.title}><div className={`assessment-icon ${a.tone}`}>{i === 0 ? <Sparkles size={22}/> : i === 1 ? <BookOpen size={22}/> : <CheckCircle2 size={22}/>}</div><div className="assessment-info"><div className="assessment-title">{a.title}</div><p>{a.subtitle}</p><div className="assessment-meta"><span><Clock3 size={13}/>{a.due}</span>{a.status === "Completed" && <span className="complete-label"><CheckCircle2 size={13}/> Completed</span>}</div></div><div className="assessment-action">{a.status === "In progress" ? <><span className="status-pill in-progress">In progress</span><div className="mini-progress"><span style={{width:`${a.progress}%`}}/></div><small>{a.progress}% complete</small><button className="small-primary">Continue <ArrowRight size={14}/></button></> : a.status === "Completed" ? <><span className="status-pill completed">Completed</span><button className="small-outline">View details</button></> : <><span className="status-pill upcoming">Coming up</span><button className="small-outline" disabled>Not available</button></>}</div></div>)}</div>
@@ -90,6 +90,8 @@ export default function Home() {
   const [displayName, setDisplayName] = useState("Learner");
   const [learnerLinked, setLearnerLinked] = useState(false);
   const [liveAssignmentCount, setLiveAssignmentCount] = useState(0);
+  const [liveSessionCount, setLiveSessionCount] = useState(0);
+  const [liveReportCount, setLiveReportCount] = useState(0);
   const [role, setRole] = useState<Role>("Student");
   const supabase = createClient();
   useEffect(() => {
@@ -110,6 +112,11 @@ export default function Home() {
           setLearnerLinked(true);
           const { count } = await supabase.from("assessment_assignments").select("id", { count: "exact", head: true }).eq("learner_id", learner.id);
           setLiveAssignmentCount(count || 0);
+          const { count: sessions } = await supabase.from("counselling_sessions").select("id", { count: "exact", head: true }).eq("learner_id", learner.id);
+          setLiveSessionCount(sessions || 0);
+          const { data: ids } = await supabase.from("assessment_assignments").select("id").eq("learner_id", learner.id);
+          const assignmentIds = (ids || []).map(item => item.id);
+          if (assignmentIds.length) { const { count: reports } = await supabase.from("report_releases").select("id", { count: "exact", head: true }).in("assignment_id", assignmentIds); setLiveReportCount(reports || 0); }
         }
       }
       setAuthReady(true);
