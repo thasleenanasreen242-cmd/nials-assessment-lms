@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { BookOpen } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -13,6 +13,37 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const supabase = createClient();
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get("code");
+    const authError = url.searchParams.get("error_description") || url.searchParams.get("error");
+
+    if (authError) {
+      setError(decodeURIComponent(authError.replace(/\+/g, " ")));
+      url.searchParams.delete("error");
+      url.searchParams.delete("error_description");
+      window.history.replaceState({}, "", url.toString());
+      return;
+    }
+
+    if (code) {
+      setBusy(true);
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (error) {
+          setError("We couldn't verify this email link. It may have expired. Please request a new confirmation email.");
+        } else {
+          setMessage("Email verified successfully. Your NiALS account is ready. Please sign in.");
+          setMode("login");
+        }
+        url.searchParams.delete("code");
+        window.history.replaceState({}, "", url.toString());
+      }).catch(() => {
+        setError("Email verification could not be completed. Please request a new confirmation email.");
+      }).finally(() => setBusy(false));
+    }
+  }, []);
 
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
