@@ -75,7 +75,7 @@ export default function LoginPage() {
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: (process.env.NEXT_PUBLIC_SITE_URL || "https://nials-assessment-lms.vercel.app") + "/login"
+        redirectTo: "https://nials-assessment-lms.vercel.app/reset-password"
       });
       if (error) throw error;
       setMessage("If an account exists for this email, a password reset link will be sent.");
