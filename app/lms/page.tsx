@@ -11,8 +11,6 @@ import {
 
 type Role = "Student" | "Counsellor" | "School Admin" | "NiALS Admin";
 
-const roles: Role[] = ["Student", "Counsellor", "School Admin", "NiALS Admin"];
-
 const assessments = [
   { title: "Career Interest Assessment", subtitle: "Explore interests, strengths and possibilities", status: "In progress", progress: 64, due: "Due 18 Nov 2026", tone: "blue" },
   { title: "Learning & Study Habits", subtitle: "Understand your learning preferences", status: "Not started", progress: 0, due: "Available soon", tone: "purple" },
@@ -91,7 +89,6 @@ export default function Home() {
   const [authReady, setAuthReady] = useState(false);
   const [displayName, setDisplayName] = useState("Learner");
   const [role, setRole] = useState<Role>("Student");
-  const [signingOut, setSigningOut] = useState(false);
   const supabase = createClient();
   useEffect(() => {
     let active = true;
@@ -114,7 +111,6 @@ export default function Home() {
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
   async function signOut() {
-    setSigningOut(true);
     await supabase.auth.signOut();
     window.location.replace("/login");
   }
