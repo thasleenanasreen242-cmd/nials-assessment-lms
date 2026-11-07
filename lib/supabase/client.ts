@@ -6,6 +6,6 @@ export function createClient(): SupabaseClient<any> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) throw new Error("Supabase environment variables are not configured.");
-  if (!client) client = createSupabaseClient(url, key);
+  if (!client) client = createSupabaseClient(url, key, { auth: { flowType: "pkce", detectSessionInUrl: true, persistSession: true, autoRefreshToken: true } });
   return client;
 }
