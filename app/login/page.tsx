@@ -22,7 +22,7 @@ export default function LoginPage() {
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
-          options: { data: { full_name: fullName.trim() }, emailRedirectTo: window.location.origin + "/login" }
+          options: { data: { full_name: fullName.trim() }, emailRedirectTo: (process.env.NEXT_PUBLIC_SITE_URL || "https://nials-assessment-lms.vercel.app") + "/login" }
         });
         if (error) throw error;
         if (data.session) window.location.href = "/lms";
@@ -43,7 +43,7 @@ export default function LoginPage() {
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: window.location.origin + "/login"
+        redirectTo: (process.env.NEXT_PUBLIC_SITE_URL || "https://nials-assessment-lms.vercel.app") + "/login"
       });
       if (error) throw error;
       setMessage("If an account exists for this email, a password reset link will be sent.");
