@@ -26,7 +26,7 @@ function Brand() {
   </div>;
 }
 
-function Sidebar({ role, setRole, mobileOpen, close }: { role: Role; setRole: (r: Role) => void; mobileOpen: boolean; close: () => void }) {
+function Sidebar({ role, mobileOpen, close, onSignOut }: { role: Role; mobileOpen: boolean; close: () => void; onSignOut: () => void }) {
   const items = role === "Student"
     ? [{ label: "Overview", icon: LayoutDashboard }, { label: "My assessments", icon: ClipboardCheck }, { label: "My progress", icon: ChartNoAxesCombined }, { label: "Counselling", icon: MessageSquareText }, { label: "My reports", icon: FileText }]
     : role === "Counsellor"
@@ -48,16 +48,16 @@ function Sidebar({ role, setRole, mobileOpen, close }: { role: Role; setRole: (r
       <div className="sidebar-bottom">
         <div className="help-card"><div className="help-icon"><LifeBuoy size={18}/></div><b>Need a hand?</b><p>Our support team is here to help.</p><button>Contact support <ArrowRight size={13}/></button></div>
         <button className="nav-item"><Settings size={18}/><span>Preferences</span></button>
-        <button className="nav-item"><LogOut size={18}/><span>Sign out</span></button>
+        <button className="nav-item" onClick={onSignOut}><LogOut size={18}/><span>Sign out</span></button>
         <div className="sidebar-version">NiALS Portal <span>v1.0 · Demo</span></div>
       </div>
     </aside>
   </>;
 }
 
-function StudentDashboard() {
+function StudentDashboard({ displayName }: { displayName: string }) {
   return <>
-    <div className="welcome-row"><div><div className="eyebrow">SATURDAY, 07 NOVEMBER 2026</div><h1>Good afternoon, Alex <span className="wave">✦</span></h1><p className="subheading">Your next step starts with understanding yourself.</p></div><button className="primary-btn" onClick={() => document.getElementById("assessments")?.scrollIntoView({behavior:"smooth"})}><ClipboardCheck size={17}/> Continue assessment</button></div>
+    <div className="welcome-row"><div><div className="eyebrow">SATURDAY, 07 NOVEMBER 2026</div><h1>Good afternoon, {displayName.split(" ")[0]} <span className="wave">✦</span></h1><p className="subheading">Your next step starts with understanding yourself.</p></div><button className="primary-btn" onClick={() => document.getElementById("assessments")?.scrollIntoView({behavior:"smooth"})}><ClipboardCheck size={17}/> Continue assessment</button></div>
     <section className="hero-card"><div className="hero-copy"><div className="hero-kicker"><Sparkles size={14}/> YOUR JOURNEY, YOUR PACE</div><h2>Discover what makes<br/>you <em>uniquely you.</em></h2><p>Take thoughtful steps towards understanding your interests, strengths and future possibilities.</p><button className="hero-btn" onClick={() => document.getElementById("assessments")?.scrollIntoView({behavior:"smooth"})}>Explore my assessments <ArrowRight size={16}/></button></div><div className="hero-art"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="art-circle"><GraduationCap size={68}/></div><div className="float-chip chip-one"><Sparkles size={15}/> Your strengths</div><div className="float-chip chip-two"><Activity size={15}/> Your interests</div><div className="art-dot dot-one"/><div className="art-dot dot-two"/></div></section>
     <div className="section-heading"><div><h2>Your overview</h2><p>A little progress every day adds up.</p></div><button className="text-link">View activity <ArrowRight size={15}/></button></div>
     <div className="stats-grid">
@@ -89,26 +89,43 @@ function StaffDashboard({ role }: { role: Role }) {
 
 export default function Home() {
   const [authReady, setAuthReady] = useState(false);
+  const [displayName, setDisplayName] = useState("Learner");
+  const [role, setRole] = useState<Role>("Student");
+  const [signingOut, setSigningOut] = useState(false);
+  const supabase = createClient();
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) window.location.replace("/login");
-      else setAuthReady(true);
-    });
+    let active = true;
+    const loadProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { window.location.replace("/login"); return; }
+      const { data: profile, error } = await supabase.from("profiles").select("display_name, role").eq("id", user.id).maybeSingle();
+      if (!active) return;
+      if (error) { console.error("Unable to load NiALS profile", error.message); }
+      const name = profile?.display_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Learner";
+      setDisplayName(name);
+      const roleMap: Record<string, Role> = { student: "Student", counsellor: "Counsellor", school_admin: "School Admin", nials_admin: "NiALS Admin", parent: "Student" };
+      setRole(roleMap[profile?.role || "student"] || "Student");
+      setAuthReady(true);
+    };
+    loadProfile();
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) window.location.replace("/login");
     });
-    return () => listener.subscription.unsubscribe();
+    return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
-  const [role, setRole] = useState<Role>("Student");
+  async function signOut() {
+    setSigningOut(true);
+    await supabase.auth.signOut();
+    window.location.replace("/login");
+  }
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifications, setNotifications] = useState(false);
   if (!authReady) return <main style={{minHeight:"100vh",display:"grid",placeItems:"center",background:"#f7f9fc",color:"#0a66c2",fontFamily:"Arial,sans-serif"}}>Opening your NiALS LMS…</main>;
   return <div className="app-shell">
-    <Sidebar role={role} setRole={setRole} mobileOpen={mobileOpen} close={() => setMobileOpen(false)}/>
+    <Sidebar role={role} mobileOpen={mobileOpen} close={() => setMobileOpen(false)} onSignOut={signOut}/>
     <main className="main-area">
-      <header className="topbar"><div className="topbar-left"><button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu size={21}/></button><div className="breadcrumb">Workspace <span>/</span> <b>{role}</b></div></div><div className="topbar-right"><div className="role-select"><span>Preview as</span><select value={role} onChange={e=>setRole(e.target.value as Role)} aria-label="Preview dashboard role">{roles.map(r=><option key={r}>{r}</option>)}</select></div><button className="icon-button notification-button" onClick={()=>setNotifications(!notifications)} aria-label="Notifications"><Bell size={19}/><i/></button>{notifications && <div className="notification-pop"><b>You're all caught up</b><p>No new notifications in this demo workspace.</p></div>}<div className="profile"><div className="profile-avatar">{role === "Student" ? "A" : role === "Counsellor" ? "C" : role === "School Admin" ? "S" : "N"}</div><div className="profile-name"><b>{role === "Student" ? "Alex Morgan" : role === "Counsellor" ? "Counsellor" : role === "School Admin" ? "School Admin" : "NiALS Admin"}</b><small>{role}</small></div><ChevronDown size={15}/></div></div></header>
-      <div className="page-content">{role === "Student" ? <StudentDashboard/> : <StaffDashboard role={role}/>}<footer className="page-footer"><Brand/><span>© 2026 NiALS Assessment Services. All rights reserved.</span><span>Privacy-first learning & assessment</span></footer></div>
+      <header className="topbar"><div className="topbar-left"><button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu size={21}/></button><div className="breadcrumb">Workspace <span>/</span> <b>{role}</b></div></div><div className="topbar-right"><button className="icon-button notification-button" onClick={()=>setNotifications(!notifications)} aria-label="Notifications"><Bell size={19}/><i/></button>{notifications && <div className="notification-pop"><b>You're all caught up</b><p>No new notifications in this demo workspace.</p></div>}<div className="profile"><div className="profile-avatar">{displayName.trim().charAt(0).toUpperCase()}</div><div className="profile-name"><b>{displayName}</b><small>{role}</small></div><ChevronDown size={15}/></div></div></header>
+      <div className="page-content">{role === "Student" ? <StudentDashboard displayName={displayName}/> : <StaffDashboard role={role}/>}<footer className="page-footer"><Brand/><span>© 2026 NiALS Assessment Services. All rights reserved.</span><span>Privacy-first learning & assessment</span></footer></div>
     </main>
   </div>;
 }
