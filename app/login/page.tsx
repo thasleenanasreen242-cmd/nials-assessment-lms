@@ -18,7 +18,7 @@ export default function LoginPage() {
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw error;
-      window.location.href = "/";
+      window.location.href = "/lms";
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to sign in. Please try again.");
     } finally { setBusy(false); }
