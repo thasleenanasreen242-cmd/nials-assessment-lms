@@ -154,9 +154,8 @@ function CounsellorWorkspace() {
   </>;
 }
 
-function StaffDashboard({ role }: { role: Role }) {
-  if (role === "Counsellor") return <CounsellorWorkspace />;
-  const isCounsellor = role === "Counsellor";
+function StaffDashboard({ role }: { role: Exclude<Role, "Counsellor"> }) {
+  const isCounsellor = false;
   const isSchool = role === "School Admin";
   if (role === "NiALS Admin") return <><div className="welcome-row"><div><div className="eyebrow">NIALS ASSESSMENT SERVICES · ADMIN WORKSPACE</div><h1>Platform administration</h1><p className="subheading">Create and manage the assessment catalogue and draft question versions.</p></div></div><AdminAssessmentManager/><section className="notice-card"><div className="notice-icon"><ShieldCheck size={20}/></div><div><b>Publication remains controlled</b><p>Question sets are saved as drafts. Review and validation must happen before they are made available to learners.</p></div></section></>;
   return <>
