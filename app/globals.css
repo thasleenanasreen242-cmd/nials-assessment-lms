@@ -13,3 +13,5 @@
 @media(max-width:760px){.auth-page{grid-template-columns:1fr}.auth-brand-panel{display:none}.auth-form-panel{min-height:100vh;padding:30px 22px}.auth-mobile-brand{display:block;color:#064b91;font:800 22px Manrope,sans-serif;margin-bottom:50px}.auth-mobile-brand span{display:block;font:700 9px "DM Sans",sans-serif;letter-spacing:1.2px;color:#8091a7;margin-top:3px}.auth-form-wrap h2{font-size:27px}}
 
 .main-login-link{display:inline-flex;align-items:center;justify-content:center;padding:8px 15px;border-radius:8px;background:#0a66c2;color:#fff;text-decoration:none;font-size:12px;font-weight:700}.main-login-link:hover{background:#064b91}@media(max-width:640px){.main-login-link{padding:7px 10px}}
+
+.auth-mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:4px;background:#eef4fa;border-radius:10px;margin:0 0 22px}.auth-mode-switch button{border:0;background:transparent;color:#60758c;border-radius:7px;padding:10px;font-weight:700}.auth-mode-switch button.active{background:#fff;color:#0a66c2;box-shadow:0 1px 4px #172b4d18}
