@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { BookOpen } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -54,7 +55,7 @@ export default function LoginPage() {
 
   return <main className="auth-page">
     <section className="auth-brand-panel">
-      <div className="auth-brand"><div className="auth-mark">N</div><div><b>NiALS</b><small>ASSESSMENT SERVICES</small></div></div>
+      <div className="auth-brand brand-lockup"><div className="brand-mark"><BookOpen size={23} strokeWidth={2.2}/><span className="brand-spark">✦</span></div><div><div className="brand-name">NiALS</div><div className="brand-caption">ASSESSMENT SERVICES</div></div></div>
       <div className="auth-message"><span>LEARN · REFLECT · GROW</span><h1>Every learner deserves a clearer path forward.</h1><p>A thoughtful space for assessments, counselling and student progress.</p></div>
       <div className="auth-foot">NiALS Assessment &amp; Student Portal</div>
     </section>
