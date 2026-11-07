@@ -102,7 +102,47 @@ function AdminAssessmentManager(){
  return <section className="table-card" id="catalogue" style={{padding:22,marginBottom:24}}><div className="section-heading"><div><h2>Assessment catalogue</h2><p>Create assessments and save versioned question sets as drafts.</p></div><span className="status-pill in-progress">NiALS Admin</span></div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12,margin:"18px 0"}}><label>Assessment code<input value={code} onChange={e=>setCode(e.target.value)} placeholder="CAREER-01"/></label><label>Assessment title<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Career Interest Assessment"/></label><label>Version label<input value={version} onChange={e=>setVersion(e.target.value)} placeholder="1.0"/></label><label>Minimum grade<input type="number" min="8" max="12" value={gradeMin} onChange={e=>setGradeMin(e.target.value)}/></label><label>Maximum grade<input type="number" min="8" max="12" value={gradeMax} onChange={e=>setGradeMax(e.target.value)}/></label><label style={{gridColumn:"1/-1"}}>Description<input value={description} onChange={e=>setDescription(e.target.value)} placeholder="Short description shown to learners"/></label></div><label style={{display:"block",fontWeight:600,marginBottom:8}}>Question set (JSON) · English and Malayalam fields supported</label><textarea value={questions} onChange={e=>setQuestions(e.target.value)} rows={12} spellCheck={false} style={{width:"100%",fontFamily:"monospace",fontSize:12,padding:12,border:"1px solid #d6deea",borderRadius:10}}/><div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginTop:12}}><button className="small-primary" disabled={saving} onClick={()=>void create()}>{saving?"Saving…":"Save assessment draft"}</button><button className="small-outline" onClick={()=>void load()}>Refresh catalogue</button><span style={{fontSize:12,color:"#718096"}}>Drafts are not visible to learners until separately reviewed and published.</span></div>{error&&<p role="alert" style={{color:"#b42318"}}>{error}</p>}{message&&<p role="status" style={{color:"#087443"}}>{message}</p>}<div style={{marginTop:24}}><h3>Existing assessments</h3>{loading?<p>Loading catalogue…</p>:items.length===0?<p>No assessments have been created yet.</p>:items.map(item=><div key={item.id} style={{padding:"14px 0",borderBottom:"1px solid #e8edf3"}}><b>{item.title}</b> <span style={{color:"#718096"}}>({item.code})</span>{item.assessment_versions?.length?item.assessment_versions.map((v:any)=><div key={v.id} style={{marginTop:12,padding:12,background:"#f7f9fc",borderRadius:10}}><div><b>Version {v.version_label}</b> · {v.published?"Published":v.evidence_status+" draft"} · Grades {v.grade_min}–{v.grade_max}</div>{v.published?<p style={{fontSize:12,color:"#087443"}}>Published version · {v.validation_note}</p>:<><textarea aria-label={"Validation note for version "+v.version_label} defaultValue={v.validation_note||""} id={"validation-"+v.id} rows={2} placeholder="Record evidence reviewed, source and validation decision (minimum 12 characters)." style={{width:"100%",marginTop:8,padding:10,border:"1px solid #d6deea",borderRadius:8}}/><button className="small-primary" disabled={saving} style={{marginTop:8}} onClick={()=>{const el=document.getElementById("validation-"+v.id) as HTMLTextAreaElement|null;if(el)void reviewVersion(v.id,el.value);}}>Validate & publish</button></>}</div>):<p>No versions</p>}</div>)}</div></section>;
 }
 
+function CounsellorWorkspace() {
+  const supabase = createClient();
+  const [sessions, setSessions] = useState<{id:string;learner_id:string;scheduled_at:string|null;held_at:string|null;created_at:string}[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("counselling_sessions")
+        .select("id,learner_id,scheduled_at,held_at,created_at")
+        .order("scheduled_at", { ascending: true, nullsFirst: false });
+      if (!active) return;
+      if (error) setError(error.message);
+      setSessions(data || []);
+      setLoading(false);
+    }
+    void load();
+    return () => { active = false; };
+  }, []);
+  const upcoming = sessions.filter(s => !!s.scheduled_at && !s.held_at && new Date(s.scheduled_at).getTime() >= Date.now()).length;
+  const completed = sessions.filter(s => !!s.held_at).length;
+  return <>
+    <div className="welcome-row"><div><div className="eyebrow">NIALS ASSESSMENT SERVICES · COUNSELLOR WORKSPACE</div><h1>Counsellor overview</h1><p className="subheading">Your assigned counselling sessions, shown from your secure account.</p></div></div>
+    <div className="stats-grid staff-stats">
+      <div className="stat-card"><div className="stat-label">ASSIGNED SESSIONS</div><div className="stat-number">{sessions.length}</div><div className="stat-foot">Sessions assigned to your account</div></div>
+      <div className="stat-card"><div className="stat-label">UPCOMING</div><div className="stat-number">{upcoming}</div><div className="stat-foot">Scheduled and not yet held</div></div>
+      <div className="stat-card"><div className="stat-label">COMPLETED</div><div className="stat-number">{completed}</div><div className="stat-foot">Session held date recorded</div></div>
+    </div>
+    <div className="section-heading" id="workspace-content"><div><h2>My counselling sessions</h2><p>Only sessions assigned to your counsellor account are shown.</p></div><button className="outline-btn" onClick={() => window.location.reload()}>Refresh <ArrowRight size={15}/></button></div>
+    <div className="table-card">
+      {loading ? <p style={{padding:20}}>Loading your sessions…</p> : error ? <p role="alert" style={{padding:20,color:"#b42318"}}>Unable to load sessions: {error}</p> : sessions.length === 0 ? <div style={{padding:24}}><b>No sessions assigned yet</b><p style={{color:"#718096"}}>When NiALS assigns a learner session to your account, it will appear here.</p></div> :
+      <div className="table-scroll"><table><thead><tr><th>LEARNER RECORD</th><th>SCHEDULED</th><th>SESSION STATUS</th></tr></thead><tbody>{sessions.map(s=><tr key={s.id}><td>Linked learner record</td><td>{s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : "Not scheduled"}</td><td><span className={`status-pill ${s.held_at ? "completed" : s.scheduled_at ? "upcoming" : "in-progress"}`}>{s.held_at ? "Completed" : s.scheduled_at ? "Scheduled" : "Awaiting schedule"}</span></td></tr>)}</tbody></table></div>}
+    </div>
+    <section className="notice-card"><div className="notice-icon"><ShieldCheck size={20}/></div><div><b>Confidential learner information</b><p>Session access is restricted to the counsellor assigned to the record. School dashboards do not receive individual responses or private counselling notes.</p></div></section>
+  </>;
+}
+
 function StaffDashboard({ role }: { role: Role }) {
+  if (role === "Counsellor") return <CounsellorWorkspace />;
   const isCounsellor = role === "Counsellor";
   const isSchool = role === "School Admin";
   if (role === "NiALS Admin") return <><div className="welcome-row"><div><div className="eyebrow">NIALS ASSESSMENT SERVICES · ADMIN WORKSPACE</div><h1>Platform administration</h1><p className="subheading">Create and manage the assessment catalogue and draft question versions.</p></div></div><AdminAssessmentManager/><section className="notice-card"><div className="notice-icon"><ShieldCheck size={20}/></div><div><b>Publication remains controlled</b><p>Question sets are saved as drafts. Review and validation must happen before they are made available to learners.</p></div></section></>;
