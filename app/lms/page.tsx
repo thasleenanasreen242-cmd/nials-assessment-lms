@@ -53,13 +53,13 @@ function Sidebar({ role, mobileOpen, close, onSignOut }: { role: Role; mobileOpe
   </>;
 }
 
-function StudentDashboard({ displayName }: { displayName: string }) {
+function StudentDashboard({ displayName, liveAssignmentCount, learnerLinked }: { displayName: string; liveAssignmentCount: number; learnerLinked: boolean }) {
   return <>
     <div className="welcome-row"><div><div className="eyebrow">SATURDAY, 07 NOVEMBER 2026</div><h1>Good afternoon, {displayName.split(" ")[0]} <span className="wave">✦</span></h1><p className="subheading">Your next step starts with understanding yourself.</p></div><button className="primary-btn" onClick={() => document.getElementById("assessments")?.scrollIntoView({behavior:"smooth"})}><ClipboardCheck size={17}/> Continue assessment</button></div>
     <section className="hero-card"><div className="hero-copy"><div className="hero-kicker"><Sparkles size={14}/> YOUR JOURNEY, YOUR PACE</div><h2>Discover what makes<br/>you <em>uniquely you.</em></h2><p>Take thoughtful steps towards understanding your interests, strengths and future possibilities.</p><button className="hero-btn" onClick={() => document.getElementById("assessments")?.scrollIntoView({behavior:"smooth"})}>Explore my assessments <ArrowRight size={16}/></button></div><div className="hero-art"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="art-circle"><GraduationCap size={68}/></div><div className="float-chip chip-one"><Sparkles size={15}/> Your strengths</div><div className="float-chip chip-two"><Activity size={15}/> Your interests</div><div className="art-dot dot-one"/><div className="art-dot dot-two"/></div></section>
     <div className="section-heading"><div><h2>Your overview</h2><p>A little progress every day adds up.</p></div><button className="text-link">View activity <ArrowRight size={15}/></button></div>
     <div className="stats-grid">
-      <div className="stat-card"><div className="stat-icon stat-blue"><ClipboardCheck size={19}/></div><div className="stat-label">ASSESSMENTS</div><div className="stat-number">03 <span>assigned</span></div><div className="stat-foot">1 completed · 1 in progress</div></div>
+      <div className="stat-card"><div className="stat-icon stat-blue"><ClipboardCheck size={19}/></div><div className="stat-label">ASSESSMENTS</div><div className="stat-number">{String(liveAssignmentCount).padStart(2, "0")} <span>assigned</span></div><div className="stat-foot">{learnerLinked ? "Live assignments linked to your account" : "Waiting for school/NiALS account linking"}</div></div>
       <div className="stat-card"><div className="stat-icon stat-purple"><Activity size={19}/></div><div className="stat-label">MY PROGRESS</div><div className="stat-number">64<span>%</span></div><div className="progress-track"><div className="progress-fill" style={{width:"64%"}}/></div><div className="stat-foot">Keep going, you're doing well</div></div>
       <div className="stat-card"><div className="stat-icon stat-green"><CalendarDays size={19}/></div><div className="stat-label">COUNSELLING</div><div className="stat-number">01 <span>session</span></div><div className="stat-foot">Your next session is to be scheduled</div></div>
       <div className="stat-card"><div className="stat-icon stat-orange"><FileText size={19}/></div><div className="stat-label">MY REPORTS</div><div className="stat-number">00 <span>available</span></div><div className="stat-foot">Reports follow your counsellor session</div></div>
@@ -88,6 +88,8 @@ function StaffDashboard({ role }: { role: Role }) {
 export default function Home() {
   const [authReady, setAuthReady] = useState(false);
   const [displayName, setDisplayName] = useState("Learner");
+  const [learnerLinked, setLearnerLinked] = useState(false);
+  const [liveAssignmentCount, setLiveAssignmentCount] = useState(0);
   const [role, setRole] = useState<Role>("Student");
   const supabase = createClient();
   useEffect(() => {
@@ -102,6 +104,14 @@ export default function Home() {
       setDisplayName(name);
       const roleMap: Record<string, Role> = { student: "Student", counsellor: "Counsellor", school_admin: "School Admin", nials_admin: "NiALS Admin", parent: "Student" };
       setRole(roleMap[profile?.role || "student"] || "Student");
+      if ((profile?.role || "student") === "student" || profile?.role === "parent") {
+        const { data: learner } = await supabase.from("learners").select("id").eq("auth_user_id", user.id).maybeSingle();
+        if (learner) {
+          setLearnerLinked(true);
+          const { count } = await supabase.from("assessment_assignments").select("id", { count: "exact", head: true }).eq("learner_id", learner.id);
+          setLiveAssignmentCount(count || 0);
+        }
+      }
       setAuthReady(true);
     };
     loadProfile();
@@ -121,7 +131,7 @@ export default function Home() {
     <Sidebar role={role} mobileOpen={mobileOpen} close={() => setMobileOpen(false)} onSignOut={signOut}/>
     <main className="main-area">
       <header className="topbar"><div className="topbar-left"><button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu size={21}/></button><div className="breadcrumb">Workspace <span>/</span> <b>{role}</b></div></div><div className="topbar-right"><button className="icon-button notification-button" onClick={()=>setNotifications(!notifications)} aria-label="Notifications"><Bell size={19}/><i/></button>{notifications && <div className="notification-pop"><b>You're all caught up</b><p>No new notifications in this demo workspace.</p></div>}<div className="profile"><div className="profile-avatar">{displayName.trim().charAt(0).toUpperCase()}</div><div className="profile-name"><b>{displayName}</b><small>{role}</small></div><ChevronDown size={15}/></div></div></header>
-      <div className="page-content">{role === "Student" ? <StudentDashboard displayName={displayName}/> : <StaffDashboard role={role}/>}<footer className="page-footer"><Brand/><span>© 2026 NiALS Assessment Services. All rights reserved.</span><span>Privacy-first learning & assessment</span></footer></div>
+      <div className="page-content">{role === "Student" ? <StudentDashboard displayName={displayName} liveAssignmentCount={liveAssignmentCount} learnerLinked={learnerLinked}/> : <StaffDashboard role={role}/>}<footer className="page-footer"><Brand/><span>© 2026 NiALS Assessment Services. All rights reserved.</span><span>Privacy-first learning & assessment</span></footer></div>
     </main>
   </div>;
 }
